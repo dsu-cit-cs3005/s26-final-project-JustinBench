@@ -1,31 +1,78 @@
 This is the starter repo for the RobotWarz assignment.
 
-Included are:
+Included files:
 
-* RobotBase.h and RobotBase.cpp - these files will be the basis for your robot and will determine what the arena does with them. Do not change them. If you find a bug, discuss it with the instructor. 
-* some .drawio  example diagrams that you can use to guide your design work. 
-* some sample Robots - Ratboy and Flame_e_o that you can use to see how robots work
-* a test robot program that will load your robot and ensure that it responds correctly when the arena calls its functions.
-* a Makefile that makes the test_robot executable linking Robot Base. You can extend this Makefile to make your arena as well. 
-* the specification for the RobotWarz assignment.
-* the class definition for the RadarObj that will be used by the Arena and the Robot to scan the arena for obstacles and other robots.
+- `RobotBase.h` and `RobotBase.cpp`: Base robot API used by all arenas. Do not modify.
+- `RadarObj.h`: Radar result object shared between robots and arena. Do not modify.
+- Sample robots: `Robot_Ratboy.cpp`, `Robot_Flame_e_o.cpp`
+- `test_robot.cpp`: Local robot contract tester.
+- `Makefile`: Builds `test_robot` and `RobotBase.o`.
+- Design/spec docs: `.drawio` files and `RobotWarz_spec.md`.
 
-Instructions:
+## What You Must Build
 
-1. Do not make changes in these files: 
-    * RobotBase.h
-    * RobotBase.cpp
-    * RadarObj.h
+1. Your own Arena implementation (recommended: `Arena.h` + `Arena.cpp`).
+2. A `RobotWarz` executable (`./RobotWarz`) that runs your turn-based simulation.
+3. At least one custom robot file named `Robot_<Name>.cpp`.
 
-2. Add whatever other classes and files you need to complete the arena. Do not add dependencies to any additional robots you make - they must be stock and portable to other arenas.
-3. Your executable must be RobotWarz (but you can name all the rest of the files whatever you want.)
-4. This is your personal assignment repo - you can push as often as you like.
-5. Report any bugs in the starter code to me by creating a github issue and assigning it to me.
+## Files You Must Not Change
 
-Hints:
+- `RobotBase.h`
+- `RobotBase.cpp`
+- `RadarObj.h`
 
-- Build a skeleton structure first. Break the problem into manageable chunks.
-- This assignment will take you a long time and you will need to iterate on it. If you wait till the last minute you will not be able to finish.
-- Look at the sequence diagram to help you understand Robot/Arena interaction.
-- Use AI, but don't just feed it the spec. Instead build a structure and ask the AI to help you flesh it out. Get the AI to do the drudgery while you do the thinking.
-  
+## Robot Contract (Required)
+
+Each robot must derive from `RobotBase` and implement all required virtual functions.
+
+Each robot source must export BOTH symbols:
+
+```cpp
+extern "C" RobotBase* create_robot();
+extern "C" const char* robot_summary();
+```
+
+`robot_summary()` rules:
+
+- Required for grading compatibility.
+- Must return non-null text.
+- Max length: **50 characters**.
+- Should briefly describe behavior strategy (example: "Hugs wall, railguns nearest target.").
+
+## Turn Rules
+
+A robot may perform exactly one action per turn:
+
+- Shoot OR
+- Move OR
+- Do nothing
+
+Robots should not rely on both shooting and movement in the same turn.
+
+## Portability Rules (Important for Grading)
+
+- Keep robot files self-contained and portable.
+- Do not add external dependencies that won't exist in the grading repo.
+- Assume your robot will be compiled and loaded into a different arena.
+
+## Local Testing
+
+Build tester:
+
+```bash
+make
+```
+
+Test a robot file:
+
+```bash
+./test_robot Robot_Ratboy.cpp
+```
+
+The tester checks compile/load behavior, required exports, summary length, and basic turn behavior.
+
+## Notes
+
+- Build a simple working arena first, then iterate.
+- Keep arena logic modular (loading, movement, shooting, radar, rendering, win condition).
+- If you think starter files have a bug, create a GitHub issue for the instructor.

@@ -31,7 +31,7 @@ private:
     // Helper function to add an obstacle to the list if it's not already there
     void add_obstacle(const RadarObj& obj) 
     {
-        if (obj.m_type == 'M' || obj.m_type == 'P' || obj.m_type == 'F' && 
+        if ((obj.m_type == 'M' || obj.m_type == 'P' || obj.m_type == 'F') && 
             !is_obstacle(obj.m_row, obj.m_col)) 
         {
             known_obstacles.push_back(obj);
@@ -139,4 +139,10 @@ void get_move_direction(int& move_direction, int& move_distance) override
 extern "C" RobotBase* create_robot() 
 {
     return new Robot_Ratboy();
+}
+
+// Required by grading arena/test harness: keep <= 50 chars.
+extern "C" const char* robot_summary()
+{
+    return "Hugs left wall, railguns nearest target.";
 }

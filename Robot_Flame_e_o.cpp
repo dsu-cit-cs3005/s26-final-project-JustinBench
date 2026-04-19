@@ -177,3 +177,9 @@ extern "C" RobotBase* create_robot()
 {
     return new Robot_Flame_e_o();
 }
+
+// Required by grading arena/test harness: keep <= 50 chars.
+extern "C" const char* robot_summary()
+{
+    return "Scans in cycles, closes in, burns nearby threats.";
+}
