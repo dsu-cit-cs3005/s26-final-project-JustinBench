@@ -11,5 +11,8 @@ RobotBase.o: RobotBase.cpp RobotBase.h
 test_robot: test_robot.cpp RobotBase.o
 	$(CXX) $(CXXFLAGS) test_robot.cpp RobotBase.o -ldl -o test_robot
 
+RobotWarz: #PUT STUFF HERE
+	$(CXX) $(CXXFLAGS) #PUT STUFF HERE# -o RobotWarz
+
 clean:
 	rm -f *.o test_robot *.so
