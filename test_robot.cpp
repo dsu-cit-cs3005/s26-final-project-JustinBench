@@ -33,7 +33,9 @@ RobotBase* load_robot(const std::string& shared_lib, void* &handle)
     std::cout << "Testing robot from " << shared_lib << "...\n";
 
     // Dynamically load the shared library
-    handle = dlopen(shared_lib.c_str(), RTLD_LAZY);
+    const std::string load_path = (shared_lib.find('/') == std::string::npos) ? "./" + shared_lib : shared_lib;
+    handle = dlopen(load_path.c_str(), RTLD_LAZY);
+
     if (!handle) 
     {
         std::cerr << "Failed to load " << shared_lib << ": " << dlerror() << '\n';
