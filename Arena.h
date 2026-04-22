@@ -72,4 +72,5 @@ private:
 
     int living_robot_count() const;
     void render_board(int turn_number) const;
+    void print_turn_log() const;
 };

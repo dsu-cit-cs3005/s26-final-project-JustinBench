@@ -15,4 +15,4 @@ RobotWarz: Arena.cpp Arena.h RobotBase.o
 	$(CXX) $(CXXFLAGS) Arena.cpp RobotBase.o -ldl -o RobotWarz
 
 clean:
-	rm -f *.o test_robot RobotWarz *.so.so
+	rm -f *.o test_robot RobotWarz *.so

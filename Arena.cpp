@@ -11,6 +11,27 @@
 #include <sstream>
 #include <thread>
 
+namespace {
+std::string trim(const std::string& value)
+{
+    const std::size_t first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return "";
+    }
+
+    const std::size_t last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+std::string to_lower_copy(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    return value;
+}
+} // namespace
+
 Arena::Arena()
     : m_rng(std::random_device{}())
 {
@@ -26,13 +47,18 @@ bool Arena::load_config(const std::string& config_path)
 
     std::string line;
     while (std::getline(config_file, line)) {
+        line = trim(line);
+        if (line.empty()) {
+            continue;
+        }
+
         const std::size_t colon = line.find(':');
         if (colon == std::string::npos) {
             continue;
         }
 
-        const std::string key = line.substr(0, colon);
-        const std::string value = line.substr(colon + 1);
+        const std::string key = trim(line.substr(0, colon));
+        const std::string value = trim(line.substr(colon + 1));
 
         if (key == "Arena_Size") {
             std::istringstream size_stream(value);
@@ -42,7 +68,7 @@ bool Arena::load_config(const std::string& config_path)
         } else if (key == "Sleep_interval") {
             m_config.sleep_interval = std::stod(value);
         } else if (key == "Game_State_Live") {
-            m_config.game_state_live = (value == "true");
+            m_config.game_state_live = (to_lower_copy(value) == "true");
         } else if (key == "Flamethrowers") {
             m_config.flamethrowers = std::stoi(value);
         } else if (key == "Pits") {
@@ -295,6 +321,13 @@ void Arena::render_board(int turn_number) const
     }
 }
 
+void Arena::print_turn_log() const
+{
+    for (const std::string& line : m_turn_log) {
+        std::cout << line << '\n';
+    }
+}
+
 int Arena::living_robot_count() const
 {
     int living = 0;
@@ -310,51 +343,103 @@ int Arena::living_robot_count() const
 
 void Arena::run()
 {
-    int turn_number = 1;
+    int round_number = 1;
 
-    while (turn_number <= m_config.max_rounds) {
-        for (std::size_t i = 0; i < m_robots.size() && turn_number <= m_config.max_rounds; ++i) {
-            render_board(turn_number);
+    std::cout << "*******************\n";
+    std::cout << " R O B O T W A R Z \n";
+    std::cout << "*******************\n";
+    std::cout << "Arena: " << m_config.height << " x " << m_config.width
+              << "  Robots: " << m_robots.size()
+              << "  Max rounds: " << m_config.max_rounds << '\n';
+    std::cout << "Obstacles - F:" << m_config.flamethrowers
+              << " P:" << m_config.pits
+              << " M:" << m_config.mounds << "\n";
 
-            if (living_robot_count() <= 1) {
-                std::cout << "Game over.\n";
-                return;
+    while (round_number <= m_config.max_rounds) {
+        render_board(round_number);
+
+        if (living_robot_count() <= 1) {
+            for (const RobotEntry& entry : m_robots) {
+                if (entry.alive) {
+                    std::cout << "Winner: " << entry.robot->m_name
+                              << " (" << entry.glyph << ")\n";
+                    return;
+                }
             }
 
-            handle_robot_turn(static_cast<int>(i), turn_number);
-
-            if (m_config.game_state_live && m_config.sleep_interval > 0.0) {
-                std::this_thread::sleep_for(std::chrono::duration<double>(m_config.sleep_interval));
-            }
-
-            ++turn_number;
+            std::cout << "Game over.\n";
+            return;
         }
+
+        for (std::size_t i = 0; i < m_robots.size(); ++i) {
+            m_turn_log.clear();
+            handle_robot_turn(static_cast<int>(i), round_number);
+            print_turn_log();
+        }
+
+        if (m_config.game_state_live && m_config.sleep_interval > 0.0) {
+            std::this_thread::sleep_for(std::chrono::duration<double>(m_config.sleep_interval));
+        }
+
+        ++round_number;
     }
+
+    std::cout << "Reached max rounds.\n";
 }
 
 bool Arena::handle_robot_turn(int robot_index, int turn_number)
 {
-    (void)turn_number;
-
     RobotEntry& entry = m_robots[static_cast<std::size_t>(robot_index)];
+    RobotBase* robot = entry.robot;
+
+    int row = 0;
+    int col = 0;
+    robot->get_current_location(row, col);
+
+    std::ostringstream intro;
+    intro << robot->m_name << " [" << entry.glyph << "] turn " << turn_number
+          << " at (" << row << "," << col << ") "
+          << "H:" << robot->get_health()
+          << " A:" << robot->get_armor()
+          << " M:" << robot->get_move_speed();
+    m_turn_log.push_back(intro.str());
+
     if (!entry.alive) {
+        m_turn_log.push_back("  robot is out and skips its turn");
         return false;
     }
 
     int radar_direction = 0;
-    entry.robot->get_radar_direction(radar_direction);
+    robot->get_radar_direction(radar_direction);
     std::vector<RadarObj> radar_results = scan_radar_for_robot(robot_index, radar_direction);
-    entry.robot->process_radar_results(radar_results);
+    robot->process_radar_results(radar_results);
+
+    if (radar_results.empty()) {
+        m_turn_log.push_back("  radar found nothing");
+    } else {
+        std::ostringstream radar_log;
+        radar_log << "  radar:";
+        for (const RadarObj& obj : radar_results) {
+            radar_log << " " << obj.m_type << "@(" << obj.m_row << "," << obj.m_col << ")";
+        }
+        m_turn_log.push_back(radar_log.str());
+    }
 
     int shot_row = 0;
     int shot_col = 0;
-    if (entry.robot->get_shot_location(shot_row, shot_col)) {
+    if (robot->get_shot_location(shot_row, shot_col)) {
         return handle_shot(robot_index, shot_row, shot_col);
     }
 
     int move_direction = 0;
     int move_distance = 0;
-    entry.robot->get_move_direction(move_direction, move_distance);
+    robot->get_move_direction(move_direction, move_distance);
+
+    if (move_direction < 0 || move_direction > 8 || move_distance <= 0 || robot->get_move_speed() <= 0) {
+        m_turn_log.push_back("  no action taken");
+        return false;
+    }
+
     handle_move(robot_index, move_direction, move_distance);
     return true;
 }
@@ -370,6 +455,7 @@ bool Arena::handle_shot(int robot_index, int shot_row, int shot_col)
 
     if (weapon == grenade) {
         if (shooter.grenades_remaining <= 0) {
+            m_turn_log.push_back("  tried to fire grenade launcher with no grenades left");
             return false;
         }
 
@@ -393,6 +479,17 @@ bool Arena::handle_shot(int robot_index, int shot_row, int shot_col)
         break;
     }
 
+    std::ostringstream action;
+    action << "  fires ";
+    switch (weapon) {
+    case railgun: action << "railgun"; break;
+    case flamethrower: action << "flamethrower"; break;
+    case grenade: action << "grenade launcher"; break;
+    case hammer: action << "hammer"; break;
+    }
+    action << " at (" << shot_row << "," << shot_col << ")";
+    m_turn_log.push_back(action.str());
+
     std::set<int> hit_targets;
     for (const auto& [row, col] : affected_cells) {
         const int target_index = find_robot_at(row, col, false);
@@ -401,13 +498,15 @@ bool Arena::handle_shot(int robot_index, int shot_row, int shot_col)
         }
     }
 
+    if (hit_targets.empty()) {
+        m_turn_log.push_back("  shot hit nothing");
+    }
+
     return true;
 }
 
 void Arena::apply_damage_to_robot(int target_index, int base_damage, const std::string& cause)
 {
-    (void)cause;
-
     RobotEntry& target = m_robots[static_cast<std::size_t>(target_index)];
     const int armor = target.robot->get_armor();
     const double reduction = std::clamp(armor * 0.10, 0.0, 0.90);
@@ -417,8 +516,17 @@ void Arena::apply_damage_to_robot(int target_index, int base_damage, const std::
     target.robot->take_damage(actual_damage);
     target.robot->reduce_armor(1);
 
+    std::ostringstream hit_log;
+    hit_log << "    " << target.robot->m_name
+            << " takes " << actual_damage
+            << " damage from " << cause
+            << " and is now H:" << target.robot->get_health()
+            << " A:" << target.robot->get_armor();
+    m_turn_log.push_back(hit_log.str());
+
     if (target.robot->get_health() <= 0) {
         target.alive = false;
+        m_turn_log.push_back("    " + target.robot->m_name + " is destroyed");
     }
 }
 
@@ -450,6 +558,7 @@ void Arena::handle_move(int robot_index, int direction, int distance)
     RobotEntry& entry = m_robots[static_cast<std::size_t>(robot_index)];
 
     if (direction <= 0 || direction > 8 || distance <= 0 || entry.robot->get_move_speed() <= 0) {
+        m_turn_log.push_back("  no action taken");
         return;
     }
 
@@ -461,8 +570,6 @@ void Arena::handle_move(int robot_index, int direction, int distance)
     const auto [dr, dc] = direction_to_delta(direction);
 
     for (int step = 1; step <= capped_distance; ++step) {
-        (void)step;
-
         const int next_row = current_row + dr;
         const int next_col = current_col + dc;
 
@@ -496,6 +603,17 @@ void Arena::handle_move(int robot_index, int direction, int distance)
             }
         }
     }
+
+    int end_row = 0;
+    int end_col = 0;
+    entry.robot->get_current_location(end_row, end_col);
+
+    std::ostringstream move_log;
+    move_log << "  moves to (" << end_row << "," << end_col << ")";
+    if (entry.robot->get_move_speed() == 0) {
+        move_log << " and is trapped in a pit";
+    }
+    m_turn_log.push_back(move_log.str());
 }
 
 std::vector<std::pair<int, int>> Arena::compute_line_cells(int start_row,
