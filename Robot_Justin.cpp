@@ -73,5 +73,5 @@ extern "C" RobotBase* create_robot() {
 }
 
 extern "C" const char* robot_summary() {
-    return "It does a thing, probably. If it doesn't...uh...did you all notice how handsome Professor Wastlund looks without his beard?";
+    return "You better not eat this guy's cheeseburger when he's not looking.";
 }
