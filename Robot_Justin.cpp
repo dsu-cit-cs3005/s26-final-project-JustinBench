@@ -1,101 +1,77 @@
 #include "RobotBase.h"
 
-class Robot_Justin: public RobotBase {
+#include <algorithm>
+#include <vector>
+
+class Robot_Justin : public RobotBase {
     private:
+        int target_row = -1;
+        int target_col = -1;
+        int next_radar_direction = 1;
         bool moving_down = true;
-        int to_shoot_row = -1;
-        int to_shoot_col = -1;
-        std::vector<RadarObj> known_obstacles;
-
-        bool is_obstacle(int row, int col) const {
-            return std::any_of(known_obstacles.begin(), known_obstacles.end(), 
-                            [&](const RadarObj& obj) {
-                                return obj.row == row && obj.col == col;
-                            });
-        }
-
-        void clear_target() {
-            to_shoot_row = -1;
-            to_shoot_col = -1;
-        }
-
-        void add_obstacle(const RadarObj& obj) {
-            if ((obj.type == 'M' || obj.type == 'P' || obj.type == 'F') && 
-                !is_obstacle(obj.row, obj.col)) 
-            {
-                known_obstacles.push_back(obj);
-            }
-        }
-
     public:
-        Robot_Justin() : RobotBase(2, 5, railgun) {}
-        virtual void get_radar_direction(int& radar_direction) override {
-            int current_row, current_col;
-            get_current_location(current_row, current_col);
-            radar_direction = (current_col > 0) ? 7 : 3;
+        Robot_Justin() : RobotBase(3, 4, railgun) {
+            m_name = "Justin";
         }
-
-        virtual void process_radar_results(const std::vector<RadarObj>& radar_results) override {
-            clear_target();
-
+        void get_radar_direction(int& radar_direction) override {
+            radar_direction = next_radar_direction;
+            next_radar_direction = (next_radar_direction % 8) + 1;
+        }
+        void process_radar_results(const std::vector<RadarObj>& radar_results) override {
+            target_row = -1;
+            target_col = -1;
             for (const auto& obj : radar_results) {
-                add_obstacle(obj);
-                if (obj.type == 'R' && to_shoot_row == -1 && to_shoot_col == -1) 
-                {
-                    to_shoot_row = obj.row;
-                    to_shoot_col = obj.col;
+                if (obj.m_type == 'R') {
+                    target_row = obj.m_row;
+                    target_col = obj.m_col;
+                    return;
                 }
             }
         }
-
-        virtual bool get_shot_location(int& shot_row, int& shot_col) override {
-            if (to_shoot_row != -1 && to_shoot_col != -1) 
-            {
-                shot_row = to_shoot_row;
-                shot_col = to_shoot_col;
-                clear_target();
-                return true;
+        bool get_shot_location(int& shot_row, int& shot_col) override {
+            if (target_row == -1 || target_col == -1) {
+                return false;
             }
-            return false;
+            shot_row = target_row;
+            shot_col = target_col;
+            return true;
         }
+        void get_move_direction(int& direction, int& distance) override {
+            int current_row = 0;
+            int current_col = 0;
+            get_current_location(current_row, current_col);
+            if (current_col > 0) {
+                direction = 7;
+                distance = std::min(get_move_speed(), current_col);
+                return;
+            }
 
-    void get_move_direction(int& move_direction, int& move_distance) override {
-        int current_row, current_col;
-        get_current_location(current_row, current_col);
-        int move = get_move_speed();
-
-        if (current_col > 0) {
-            move_direction = 7;
-            move_distance = std::min(move, current_col);
-            return;
-        }
-
-        if (moving_down) {
-            if (current_row + move < board_row_max) {
-                move_direction = 5;
-                move_distance = std::min(move, board_row_max - current_row - 1);
+            if (moving_down) {
+                if (current_row >= m_board_row_max - 1) {
+                    moving_down = false;
+                    direction = 1;
+                    distance = 1;
+                    return;
+                }
+                direction = 5;
+                distance = 1;
             } else {
-                moving_down = false;
-                move_direction = 1;
-                move_distance = 1;
-            }
-        } else {
-            if (current_row - move >= 0) {
-                move_direction = 1;
-                move_distance = std::min(move, current_row);
-            } else {
-                moving_down = true;
-                move_direction = 5;
-                move_distance = 1;
+                if (current_row <= 0) {
+                    moving_down = true;
+                    direction = 5;
+                    distance = 1;
+                    return;
+                }
+                direction = 1;
+                distance = 1;
             }
         }
-    }
-}
+};
 
 extern "C" RobotBase* create_robot() {
     return new Robot_Justin();
 }
 
 extern "C" const char* robot_summary() {
-    return "It'll do a thing, probably. If he doesn't...uh...who else noticed how handsome professor Wastlund looks without a beard?"
+    return "It does a thing, probably. If it doesn't...uh...did you all notice how handsome Professor Wastlund looks without his beard?";
 }
