@@ -73,5 +73,5 @@ extern "C" RobotBase* create_robot() {
 }
 
 extern "C" const char* robot_summary() {
-    return "You better not eat this guy's cheeseburger when he's not looking.";
+    return "You better not eat this guy's cheeseburger.";
 }
