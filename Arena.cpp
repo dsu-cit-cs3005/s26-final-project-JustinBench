@@ -302,9 +302,17 @@ std::vector<RadarObj> Arena::scan_radar_for_robot(int robot_index, int direction
 
 void Arena::render_board(int turn_number) const
 {
-    std::cout << "\n=========== starting round " << turn_number << " ===========\n";
+    std::cout << "\n=========== starting round " << turn_number << " ===========" << std::endl;
+    for (int col = 0; col < m_config.width; ++col) {
+        std::cout << "  " << col;
+    }
+    std::cout << std::endl;
 
     for (int row = 0; row < m_config.height; ++row) {
+        std::cout << row << "  ";
+        if (row < 10) {
+            std::cout << ' ';
+        }
         for (int col = 0; col < m_config.width; ++col) {
             const int robot_index = find_robot_at(row, col, true);
             if (robot_index >= 0) {
