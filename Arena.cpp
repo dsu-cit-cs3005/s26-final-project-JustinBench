@@ -398,7 +398,7 @@ bool Arena::handle_robot_turn(int robot_index, int turn_number)
 
     std::ostringstream intro;
     intro << robot->m_name << " [" << entry.glyph << "] turn " << turn_number
-          << " at (" << row << "," << col << ") "
+          << " at (" << col << "," << row << ") "
           << "H:" << robot->get_health()
           << " A:" << robot->get_armor()
           << " M:" << robot->get_move_speed();
@@ -420,7 +420,7 @@ bool Arena::handle_robot_turn(int robot_index, int turn_number)
         std::ostringstream radar_log;
         radar_log << "  radar:";
         for (const RadarObj& obj : radar_results) {
-            radar_log << " " << obj.m_type << "@(" << obj.m_row << "," << obj.m_col << ")";
+            radar_log << " " << obj.m_type << "@(" << obj.m_col << "," << obj.m_row << ")";
         }
         m_turn_log.push_back(radar_log.str());
     }
@@ -487,7 +487,7 @@ bool Arena::handle_shot(int robot_index, int shot_row, int shot_col)
     case grenade: action << "grenade launcher"; break;
     case hammer: action << "hammer"; break;
     }
-    action << " at (" << shot_row << "," << shot_col << ")";
+    action << " at (" << shot_col << "," << shot_row << ")";
     m_turn_log.push_back(action.str());
 
     std::set<int> hit_targets;
@@ -609,7 +609,7 @@ void Arena::handle_move(int robot_index, int direction, int distance)
     entry.robot->get_current_location(end_row, end_col);
 
     std::ostringstream move_log;
-    move_log << "  moves to (" << end_row << "," << end_col << ")";
+    move_log << "  moves to (" << end_col << "," << end_row << ")";
     if (entry.robot->get_move_speed() == 0) {
         move_log << " and is trapped in a pit";
     }
